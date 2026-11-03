@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "berend.fullname" . }}
+  labels: {{- include "berend.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "berend.selector" . | nindent 4 }}
+  ports:
+    - {name: http, port: {{ .Values.service.port }}, targetPort: http}

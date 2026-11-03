@@ -1,0 +1,65 @@
+# One replica on purpose: Socket Mode / websocket bots, embedded index and monitor state on RWO.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "berend.fullname" . }}
+  labels: {{- include "berend.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {{- include "berend.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "berend.selector" . | nindent 8 }}
+      annotations:
+        checksum/values: {{ toJson .Values | sha256sum | trunc 16 }}
+        {{- with .Values.podAnnotations }}{{ toYaml . | nindent 8 }}{{ end }}
+    spec:
+      {{- if .Values.initialIndex }}
+      initContainers:
+        - name: initial-index
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", "[ -n \"$(ls -A /data/chroma 2>/dev/null)\" ] || python -m berend.ingest"]
+          {{- include "berend.env" . | nindent 10 }}
+      {{- end }}
+      containers:
+        - name: berend
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - {name: http, containerPort: {{ .Values.service.port }}}
+          {{- include "berend.env" . | nindent 10 }}
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 10
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities: {drop: [ALL]}
+            seccompProfile: {type: RuntimeDefault}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "berend.fullname" . }}-data
+        {{- if .Values.caBundleConfigMap }}
+        - name: ca
+          configMap:
+            name: {{ .Values.caBundleConfigMap }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

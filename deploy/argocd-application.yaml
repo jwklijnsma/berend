@@ -1,0 +1,31 @@
+# Deploy Berend with Argo CD from your GitLab repo (GitOps).
+# Berend's own Argo CD account only needs role:readonly; this Application is managed by your
+# normal Argo CD instance. The secret `berend` must exist in the namespace (SealedSecret/ExternalSecret).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: berend
+  namespace: openshift-gitops
+  annotations:
+    berend.io/mute: "false"          # set "true" to stop Berend alerting about itself
+spec:
+  project: default
+  source:
+    repoURL: https://gitlab.example.nl/platform/berend.git
+    targetRevision: main
+    path: chart/berend
+    helm:
+      valuesObject:
+        image:
+          repository: registry.gitlab.example.nl/platform/berend
+          tag: latest
+        env:
+          OLLAMA_HOST: http://ollama.ollama.svc:11434
+        serviceMonitor:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: berend
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

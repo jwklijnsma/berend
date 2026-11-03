@@ -1,0 +1,6 @@
+apiVersion: v2
+name: berend
+description: Berend - local-LLM knowledge assistant for Slack/Mattermost with Argo CD alerting
+type: application
+version: 0.3.0
+appVersion: "3.0.0"

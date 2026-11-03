@@ -1,0 +1,63 @@
+# OPTIONAL: Argo CD's built-in notifications engine posting to the same Mattermost channel.
+# Use it for instant, event-driven messages (deploys, sync failures) alongside the polling
+# monitor, which adds debouncing, threads, resolve tracking and the AI analysis.
+# If you enable on-health-degraded here too, set ARGOCD_ALERT_* so you don't get duplicates.
+#
+# Merge into argocd-notifications-cm (OpenShift GitOps: the ArgoCD CR's notifications config),
+# put the bot token in argocd-notifications-secret as `mattermost-token`, then subscribe apps:
+#   metadata.annotations:
+#     notifications.argoproj.io/subscribe.on-deployed.mattermost: <channel-id>
+#     notifications.argoproj.io/subscribe.on-sync-failed.mattermost: <channel-id>
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+data:
+  service.mattermost: |
+    apiURL: https://mattermost.example.nl
+    token: $mattermost-token
+  context: |
+    argocdUrl: https://openshift-gitops-server-openshift-gitops.apps.cluster.example.nl
+
+  template.app-deployed: |
+    message: ""
+    mattermost:
+      attachments: |
+        [{
+          "color": "#2E7D32",
+          "title": "🚀 {{.app.metadata.name}} deployed",
+          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.namespace}}/{{.app.metadata.name}}",
+          "fields": [
+            {"short": true, "title": "Revision", "value": "`{{.app.status.sync.revision | trunc 8}}`"},
+            {"short": true, "title": "Health", "value": "{{.app.status.health.status}}"},
+            {"short": true, "title": "Project", "value": "{{.app.spec.project}}"},
+            {"short": true, "title": "Namespace", "value": "{{.app.spec.destination.namespace}}"}
+          ],
+          "footer": "Argo CD notifications"
+        }]
+
+  template.app-sync-failed: |
+    message: ""
+    mattermost:
+      attachments: |
+        [{
+          "color": "#D32F2F",
+          "title": "🔴 {{.app.metadata.name}} — sync {{.app.status.operationState.phase}}",
+          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.namespace}}/{{.app.metadata.name}}",
+          "text": "{{.app.status.operationState.message}}",
+          "fields": [
+            {"short": true, "title": "Revision", "value": "`{{.app.status.operationState.syncResult.revision | trunc 8}}`"},
+            {"short": true, "title": "Project", "value": "{{.app.spec.project}}"}
+          ],
+          "footer": "Argo CD notifications"
+        }]
+
+  trigger.on-deployed: |
+    - description: Synced and healthy after a new revision
+      oncePer: app.status.operationState.syncResult.revision
+      send: [app-deployed]
+      when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+  trigger.on-sync-failed: |
+    - description: Sync failed
+      send: [app-sync-failed]
+      when: app.status.operationState.phase in ['Error', 'Failed']

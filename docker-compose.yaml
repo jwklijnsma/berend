@@ -1,0 +1,30 @@
+# Local test stack: Ollama + SearXNG + the bot.
+#   cp .env.example .env   (set OLLAMA_HOST=http://ollama:11434, SEARXNG_URL=http://searxng:8080)
+#   docker compose up -d ollama searxng
+#   docker compose exec ollama ollama pull qwen2.5:14b && docker compose exec ollama ollama pull nomic-embed-text
+#   docker compose run --rm bot python -m berend.ingest
+#   docker compose up -d bot
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes: [ollama:/root/.ollama]
+    ports: ["11434:11434"]
+    # GPU: uncomment
+    # deploy: {resources: {reservations: {devices: [{capabilities: [gpu]}]}}}
+
+  searxng:
+    image: searxng/searxng:latest
+    ports: ["8888:8080"]
+    volumes: [./searxng:/etc/searxng]
+
+  bot:
+    build: .
+    env_file: .env
+    volumes:
+      - index:/data
+      - ./docs:/app/docs:ro
+    depends_on: [ollama, searxng]
+
+volumes:
+  ollama: {}
+  index: {}

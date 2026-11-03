@@ -1,0 +1,29 @@
+stages: [test, build]
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+test:
+  stage: test
+  image: python:3.12-slim
+  cache:
+    paths: [.cache/pip]
+  script:
+    - pip install -q -r requirements.txt -r requirements-dev.txt
+    - ruff check .
+    - pytest
+
+# Rootless image build with Buildah (works on unprivileged OpenShift/Kubernetes runners).
+build:
+  stage: build
+  image: quay.io/buildah/stable:latest
+  variables:
+    STORAGE_DRIVER: vfs
+    BUILDAH_ISOLATION: chroot
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - buildah build -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" -t "$CI_REGISTRY_IMAGE:latest" .
+    - buildah push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - buildah push "$CI_REGISTRY_IMAGE:latest"

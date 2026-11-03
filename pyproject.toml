@@ -1,0 +1,17 @@
+[project]
+name = "berend"
+version = "3.0.0"
+description = "Berend: local-LLM knowledge assistant for Slack/Mattermost with Argo CD alerting"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E501", "B905"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

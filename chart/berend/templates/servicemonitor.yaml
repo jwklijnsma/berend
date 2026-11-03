@@ -1,0 +1,14 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "berend.fullname" . }}
+  labels: {{- include "berend.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels: {{- include "berend.selector" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

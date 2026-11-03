@@ -1,0 +1,14 @@
+# Minimal SearXNG config with the JSON API enabled (needed by the bot).
+use_default_settings: true
+server:
+  secret_key: "change-me-to-a-random-string"
+  limiter: false
+search:
+  formats: [html, json]
+engines:
+  - name: google
+    disabled: false
+  - name: duckduckgo
+    disabled: false
+  - name: bing
+    disabled: false

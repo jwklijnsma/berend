@@ -1,0 +1,41 @@
+image:
+  repository: image-registry.openshift-image-registry.svc:5000/berend/berend
+  tag: latest
+  pullPolicy: Always
+
+# Secret with all settings from .env (tokens, URLs). Create it yourself, e.g. from a
+# SealedSecret / ExternalSecret / Vault, or: oc create secret generic berend --from-env-file=.env
+existingSecret: berend
+
+# Extra non-secret settings (override what's in the secret)
+env: {}
+  # CHAT_MODEL: qwen2.5:14b
+  # OLLAMA_HOST: http://ollama.ollama.svc:11434
+  # ARGOCD_POLL_SECONDS: "60"
+
+# Mount an internal CA bundle (ConfigMap with key ca-bundle.crt), e.g. the OpenShift
+# trusted CA ConfigMap labelled config.openshift.io/inject-trusted-cabundle=true
+caBundleConfigMap: ""
+
+persistence:
+  size: 5Gi
+  storageClass: ""
+
+# Build the index on first start when it's empty
+initialIndex: true
+
+resources:
+  requests: {cpu: 100m, memory: 512Mi}
+  limits: {memory: 2Gi}
+
+service:
+  port: 8080
+
+serviceMonitor:
+  enabled: false          # requires user workload monitoring / Prometheus Operator
+  interval: 30s
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
