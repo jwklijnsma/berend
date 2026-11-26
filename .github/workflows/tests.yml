@@ -1,0 +1,26 @@
+name: tests
+
+# Same as the GitLab `test` job: ruff + pytest. Offline: Ollama, Slack,
+# Mattermost, GitLab and Argo CD are faked; embeddings are deterministic.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt pytest-cov
+      - run: pip install -e .
+      - run: ruff check .
+      - run: pytest --cov=berend --cov-report=term-missing
